@@ -1,3 +1,5 @@
+# IN EXPERIMENTAL PHASE
+
 # two-stream-action-recognition for egocentric 360 DataSets
 
 We use a spatial and motion stream cnn with ResNet101 for modeling video information in UCF101 dataset.
