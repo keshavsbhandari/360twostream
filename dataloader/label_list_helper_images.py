@@ -24,7 +24,6 @@ impath = "/home/keshav/DATA/finalEgok360/images/"
 
 p = Path(impath)
 p = [*p.glob("**/*.jpg")]
-dic = {}
 
 labellist = {"Ping-Pong__Ping-Pong": 0, "Ping-Pong__Pickup_ball": 1, "Ping-Pong__Hit": 2, "Ping-Pong__Bounce_ball": 3, "Ping-Pong__Serve": 4,
              "Sitting__Sitting": 5, "Sitting__Follow_obj": 6, "Sitting__Turn_right": 7, "Sitting__At_computer": 8, "Sitting__Check_phone": 9,
@@ -41,6 +40,26 @@ labellist = {"Ping-Pong__Ping-Pong": 0, "Ping-Pong__Pickup_ball": 1, "Ping-Pong_
              "Running__Turn_around": 55, "Running__Looking_at": 56, "Running__Running": 57, "Walking__Breezeway": 58, "Walking__Crossing_street": 59,
              "Walking__Doorway": 60, "Walking__Hallway": 61, "Walking__Walking": 62}
 
+
+parent = {
+    "Ping-Pong":0,
+    "Sitting":1,
+    "Driving":2,
+    "Playing_pool":3,
+    "Stairs":4,
+    "Lunch":5,
+    "Playing_cards":6,
+    "Desk_work":7,
+    "Standing":8,
+    "Office_talk":9,
+    "Running":10,
+    "Walking":11,
+    }
+
+data = []
+
+
+
 for i in p:
     key = i.parent.name
     subclass = i.parent.parent.name
@@ -50,70 +69,76 @@ for i in p:
     imi = str(i)
     assert os.path.exists(imi)
 
-    val = {'images':imi,'class':c,'label':labellist.get(c),'vidname':key,'superclass':superclass}
+    assert labellist.get(c) is not None
+    assert parent.get(superclass) is not None
 
-    if key not in dic.keys():
-        dic.update({key:[val]})
-    else:
-        item = dic.get(key)
-        item.append(val)
-        dic[key] = item
+    val = {'images':imi,'class':c,'label':labellist.get(c),'vidname':key,'superclass':superclass,'slabel':parent.get(superclass)}
 
-S = lambda x:int(x.split('_')[-1].split('.jpg')[0])
+    data.append(val)
 
-Train = []
-Test = []
-#
-printe(len(dic))
-#
 import random
-#
-trainlist = list(dic.keys())
-testlist = random.sample(trainlist,int(len(dic) * 0.05))
 
-for i in testlist:
-    trainlist.remove(i)
+random.shuffle(data)
 
 
-printe(len(trainlist))
-printe(len(testlist))
+label_keys = list(labellist.keys())
+label_value_init = [0] * len(label_keys)
+count_dict_val = dict(zip(label_keys, label_value_init.copy()))
+count_dict_test = dict(zip(label_keys, label_value_init.copy()))
+dict_count_class_wise = dict(zip(label_keys, label_value_init.copy()))
+max_limit = dict(zip(label_keys, label_value_init.copy()))
+count_dict_train = dict(zip(label_keys, label_value_init.copy()))
+
+for d in data:
+    key = d['class']
+    dict_count_class_wise[key]+= 1
 
 
+def map_max_count(val):
+    return int(val*0.05)
+
+for m in max_limit:
+    max_limit[m] = map_max_count(dict_count_class_wise[m])
+
+print(max_limit.values())
+print(min(list(max_limit.values())))
+print(sum(list(max_limit.values())))
 
 
-
-for k in trainlist:
-    dic[k] = sorted(dic[k],key=lambda x:S(x['images']))
-    temp = []
-    for c in chunk(dic[k]):
-        Train.append(c)
-
-for k in testlist:
-    dic[k] = sorted(dic[k],key=lambda x:S(x['images']))
-    temp = []
-    for c in chunk(dic[k]):
-        Test.append(c)
-
-T = []
+train_data = []
+test_data = []
+val_data = []
 
 
-for k in dic.keys():
-    dic[k] = sorted(dic[k],key=lambda x:S(x['images']))
-    temp = []
-    for c in chunk(dic[k]):
-        T.append(c)
+for d in data:
+    k = d['class']
+    limit = max_limit[k]
+    if count_dict_val[k] < limit:
+        val_data.append(d)
+        count_dict_val[k] += 1
+    elif count_dict_test[k] < limit:
+        test_data.append(d)
+        count_dict_test[k] += 1
+    else:
+        train_data.append(d)
+        count_dict_train[k] += 1
 
 
-printe(len(Test))
-printe(len(Train))
-printe(len(T))
-assert len(T) == len(Test) + len(Train)
+print("VERIFYING")
+print(len(train_data))
+print(len(test_data))
+print(len(val_data))
+print(len(train_data) + len(test_data) + len(val_data))
+print(len(data))
 
-#
+print(min(list(count_dict_train.values())))
+print(min(list(count_dict_test.values())))
+print(min(list(count_dict_val.values())))
 
 def save(x, fname):
     with open(fname, 'w') as f:
         f.write(json.dumps(x))
 
-save(Train,'../Egok_list/images_trainlist.txt')
-save(Test,'../Egok_list/images_testlist.txt')
+save(train_data,'../Egok_list/images_trainlist.txt')
+save(test_data,'../Egok_list/images_testlist.txt')
+save(val_data,'../Egok_list/images_vallist.txt')

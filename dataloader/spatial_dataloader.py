@@ -15,7 +15,7 @@ class spatial_dataset(Dataset):
     def __init__(self, data_list_dict, rows = 320,
                  cols = 640,resizerow = 224,
                  resizecol = 224,transform=None,num_classes = 63):
-        self.data = data_list_dict
+        self.data = data_list_dict[:10]
         self.transform = transform
         self.img_rows = rows
         self.img_cols = cols

@@ -90,7 +90,7 @@ if __name__ == '__main__':
     
     dataloader = spatial_dataloader(BATCH_SIZE=1,
                                     num_workers=1,
-                                    path='./../data/images/',
+                                    path='.data/images/',
                                     imagelist_path='./Egok_list/imagelist.txt'
                                     )
     train_loader,val_loader,test_video = dataloader()
