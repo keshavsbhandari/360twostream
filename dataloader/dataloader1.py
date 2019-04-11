@@ -106,9 +106,9 @@ class EgoCentricDataLoader():
         random.shuffle(self.test_list)
         random.shuffle(self.val_list)
 
-        self.train_list = self.train_list[:100]
-        self.val_list = self.val_list[:100]
-        self.test_list = self.test_list[:100]
+        # self.train_list = self.train_list[:100]
+        # self.val_list = self.val_list[:100]
+        # self.test_list = self.test_list[:100]
 
         self.mode = mode
 
