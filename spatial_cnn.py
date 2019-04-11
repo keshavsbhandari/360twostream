@@ -16,6 +16,7 @@ import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
+
 import dataloader.dataloader as dataloader
 from utils import *
 from network import *
@@ -26,12 +27,14 @@ import numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 parser = argparse.ArgumentParser(description='UCF101 spatial stream on resnet101')
-parser.add_argument('--epochs', default=500, type=int, metavar='N', help='number of total epochs')
+parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of total epochs')
 parser.add_argument('--batch-size', default=50, type=int, metavar='N', help='mini-batch size (default: 25)')
 parser.add_argument('--lr', default=5e-4, type=float, metavar='LR', help='initial learning rate')
 parser.add_argument('--evaluate', dest='evaluate', action='store_true', help='evaluate model on validation set')
 parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to latest checkpoint (default: none)')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N', help='manual epoch number (useful on restarts)')
+
+
 
 def main():
     global arg
@@ -41,10 +44,13 @@ def main():
     #Prepare DataLoader
     data_loader = dataloader.EgoCentricDataLoader(
         BATCH_SIZE=arg.batch_size,
-        num_workers=8,
-        train_list_path='./Egok_list/images_trainlist.txt',
-        test_list_path='./Egok_list/images_testlist.txt',
-        val_list_path='./Egok_list/images_vallist.txt',
+        num_workers=4,
+        # train_list_path='./Egok_list/images_trainlist.txt',
+        # test_list_path='./Egok_list/images_testlist.txt',
+        # val_list_path='./Egok_list/images_vallist.txt',
+        train_list_path='./Egok_list/merged_train_list.txt',
+        test_list_path='./Egok_list/merged_test_list.txt',
+        val_list_path='./Egok_list/merged_val_list.txt',
         mode='spatial'
     )
     
@@ -59,13 +65,18 @@ def main():
                         evaluate=arg.evaluate,
                         train_loader=train_loader,
                         test_loader=test_loader,
-                        val_loader = val_loader
+                        val_loader = val_loader,
+                        channel = 30
     )
+    if torch.cuda.device_count() > 1:
+        print("Let us use", torch.cuda.device_count()," GPUS")
+        model = nn.DataParallel(model)
     #Training
+    #model = model.to(torch.device('cuda'))
     model.run()
 
 class Spatial_CNN():
-    def __init__(self, nb_epochs, lr, batch_size, resume, start_epoch, evaluate, train_loader, test_loader, val_loader):
+    def __init__(self, nb_epochs, lr, batch_size, resume, start_epoch, evaluate, train_loader, test_loader, val_loader, channel):
         self.nb_epochs=nb_epochs
         self.lr=lr
         self.batch_size=batch_size
@@ -76,16 +87,29 @@ class Spatial_CNN():
         self.test_loader=test_loader
         self.val_loader = val_loader
         self.best_prec1=0
+        self.channel = channel
 
     def build_model(self):
         print ('==> Build model and setup loss and optimizer')
         #build model
-        self.model = resnet101(pretrained= True, channel=3).cuda()
+        self.model = resnet101(pretrained= True, channel=self.channel).cuda()
         #Loss function and optimizer
         self.criterion = nn.CrossEntropyLoss().cuda()
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1,verbose=True)
-    
+
+    def extractProbability(self, batch, label_dict):
+        self.build_model()
+        self.resume_and_evaluate()
+        cudnn.benchmark = True
+        reference = self.test_loader
+        progress = tqdm(reference)
+        with torch.no_grad():
+            label = label_dict['label'].cuda()
+            data_var = Variable(batch).cuda()
+            output = self.model(data_var)
+        return output
+
     def resume_and_evaluate(self):
         if self.resume:
             if os.path.isfile(self.resume):
@@ -118,7 +142,7 @@ class Spatial_CNN():
             # save model
             if is_best:
                 self.best_prec1 = prec1
-                with open('record/spatial/spatial_video_preds.pickle','wb') as f:
+                with open('record/spatial/best_spatial_video_preds.pickle','wb') as f:
                     pickle.dump(self.dic_video_level_preds,f)
                 f.close()
             
@@ -169,6 +193,9 @@ class Spatial_CNN():
             losses.update(loss.data.item(), data.size(0))
             # top1.update(prec1[0], data.size(0))
             top1.update(prec1, data.size(0))
+
+            #TOP3.UPDATE
+            top3.update(prec3, data.size(0))
             # top5.update(prec5[0], data.size(0))
             top5.update(prec5, data.size(0))
 
@@ -242,17 +269,6 @@ class Spatial_CNN():
                 c = label_dict['class'][0]
                 s = label_dict['superclass'][0]
 
-                predicted_label = torch.max(output,1)[1].item()
-                #Predicted superclass s_, and subclass c_
-                c_ = reverse_label_list.get(predicted_label)
-                s_ = c_.split('__')[0]
-
-                true_super.append(s)
-                true_sub.append(c)
-
-                pred_super.append(s_)
-                pred_sub.append(c_)
-
                 match1 = topk(output, label_dict['label'][0], 1)
                 match3 = topk(output, label_dict['label'][0], 3)
                 match5 = topk(output, label_dict['label'][0], 5)
@@ -261,7 +277,7 @@ class Spatial_CNN():
                 predicted_label = torch.max(output, 1)[1].item()
                 # Predicted superclass s_, and subclass c_
                 c_ = reverse_label_list.get(predicted_label)
-                s_ = c_.split('__')[0]
+                s_ = c_.split('/')[0]
 
                 true_super.append(s)
                 true_sub.append(c)
@@ -294,10 +310,10 @@ class Spatial_CNN():
 
             info = {'Epoch': [self.epoch] * 3,
                     'Batch Time': [np.round(batch_time.avg, 3)] * 3,
-                    'Top K': [1, 2, 3],
+                    'Top K': [1, 3, 5],
                     'Accuracy': [acc1, acc2, acc3],
-                    'Aggregated@Accuracy@SubClass': [super_acc1, super_acc2, super_acc3],
-                    'Aggregated@Accuracy@SuperClass': [sub_acc1, sub_acc2, sub_acc3],
+                    'Aggregated@Accuracy@SubClass': [sub_acc1, sub_acc2, sub_acc3],
+                    'Aggregated@Accuracy@SuperClass': [super_acc1, super_acc2, super_acc3],
                     'Aggregated@Accuracy@Video': [video_acc1, video_acc2, video_acc3],
                     'Average@Loss': [val_loss.avg] * 3,
                     }
@@ -324,7 +340,7 @@ class Spatial_CNN():
             super_mAP, super_mAR = get_mAP_and_mAR(df_conf_super)
 
             confusion_matrix_sub = ConfusionMatrix(true_sub, pred_sub)
-            df_conf_sub = confusion_matrix_super.to_dataframe()
+            df_conf_sub = confusion_matrix_sub.to_dataframe()
             df_conf_sub.to_csv('./record/motion/sub_confusion.csv', index=None)
 
             sub_mAP, sub_mAR = get_mAP_and_mAR(df_conf_sub)

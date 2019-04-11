@@ -18,6 +18,9 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from utils import *
 from network import *
+#old
+# import dataloader.dataloader as dataloader
+#New
 import dataloader.dataloader as dataloader
 import numpy as np
 import tabulate
@@ -50,9 +53,13 @@ def main():
                         BATCH_SIZE=arg.batch_size,
                         num_workers=8,
                         img_stack = arg.img_stack,
-                        train_list_path = './Egok_list/flow_trainlist.txt',
-                        test_list_path='./Egok_list/flow_testlist.txt',
-                        val_list_path='./Egok_list/flow_vallist.txt',
+                        # train_list_path = './Egok_list/flow_trainlist.txt',
+                        # test_list_path='./Egok_list/flow_testlist.txt',
+                        # val_list_path='./Egok_list/flow_vallist.txt',
+                        train_list_path='./Egok_list/merged_train_list.txt',
+                        test_list_path='./Egok_list/merged_test_list.txt',
+                        val_list_path='./Egok_list/merged_val_list.txt',
+                        mode = 'motion'
                         )
 
     train_loader , val_loader, test_loader = data_loader()
@@ -106,6 +113,20 @@ class Motion_CNN():
         self.criterion = nn.CrossEntropyLoss().cuda()
         self.optimizer = torch.optim.SGD(self.model.parameters(), self.lr, momentum=0.9)
         self.scheduler = ReduceLROnPlateau(self.optimizer, 'min', patience=1,verbose=True)
+
+
+    def extractProbability(self, batch, label_dict):
+        self.build_model()
+        self.resume_and_evaluate()
+        cudnn.benchmark = True
+        reference = self.test_loader
+        progress = tqdm(reference)
+        with torch.no_grad():
+            label = label_dict['label'].cuda()
+            data_var = Variable(batch).cuda()
+            output = self.model(data_var)
+        return output
+
 
     def resume_and_evaluate(self):
         if self.resume:
@@ -260,7 +281,6 @@ class Motion_CNN():
                 s = label_dict['superclass'][0]
 
 
-
                 match1 = topk(output, label_dict['label'], 1)
                 match3 = topk(output, label_dict['label'], 3)
                 match5 = topk(output, label_dict['label'], 5)
@@ -268,7 +288,9 @@ class Motion_CNN():
                 predicted_label = torch.max(output, 1)[1].item()
                 # Predicted superclass s_, and subclass c_
                 c_ = reverse_label_list.get(predicted_label)
-                s_ = c_.split('__')[0]
+                s_ = c_.split('/')[0]
+
+
 
                 true_super.append(s)
                 true_sub.append(c)
@@ -301,8 +323,8 @@ class Motion_CNN():
                 'Batch Time':[np.round(batch_time.avg,3)]*3,
                 'Top K':[1, 2, 3],
                 'Accuracy':[acc1, acc2, acc3],
-                'Prec@Accuracy@SubClass':[super_acc1,super_acc2,super_acc3],
-                'Aggregated@Accuracy@SuperClass':[sub_acc1, sub_acc2, sub_acc3],
+                'Aggregated@Accuracy@SubClass': [sub_acc1, sub_acc2, sub_acc3],
+                'Prec@Accuracy@SuperClass':[super_acc1,super_acc2,super_acc3],
                 'Aggregated@Accuracy@Video': [video_acc1, video_acc2,video_acc3],
                 'Average@Loss':[val_loss.avg]*3,
                 }
@@ -330,7 +352,7 @@ class Motion_CNN():
         super_mAP, super_mAR = get_mAP_and_mAR(df_conf_super)
 
         confusion_matrix_sub = ConfusionMatrix(true_sub, pred_sub)
-        df_conf_sub = confusion_matrix_super.to_dataframe()
+        df_conf_sub = confusion_matrix_sub.to_dataframe()
         df_conf_sub.to_csv('./record/motion/sub_confusion.csv', index=None)
 
         sub_mAP, sub_mAR = get_mAP_and_mAR(df_conf_sub)
