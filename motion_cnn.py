@@ -21,14 +21,14 @@ from network import *
 #old
 # import dataloader.dataloader as dataloader
 #New
-import dataloader.dataloader as dataloader
+import dataloader.dataloader1 as dataloader
 import numpy as np
 import tabulate
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 parser = argparse.ArgumentParser(description='UCF101 motion stream on resnet101')
 parser.add_argument('--epochs', default=500, type=int, metavar='N', help='number of total epochs')

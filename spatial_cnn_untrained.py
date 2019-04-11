@@ -17,14 +17,14 @@ from torch.autograd import Variable
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
-import dataloader.dataloader as dataloader
+import dataloader.dataloader5 as dataloader
 from utils import *
 from network import *
 from torchvision import transforms
 from  torchvision import  models
 import numpy as np
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "5"
 
 parser = argparse.ArgumentParser(description='UCF101 spatial stream on resnet101')
 parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of total epochs')
