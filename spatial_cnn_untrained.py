@@ -142,7 +142,7 @@ class Spatial_CNN():
             # save model
             if is_best:
                 self.best_prec1 = prec1
-                with open('record/spatial/best_spatial_video_preds.pickle','wb') as f:
+                with open('record/spatial_untrained/best_spatial_video_preds.pickle','wb') as f:
                     pickle.dump(self.dic_video_level_preds,f)
                 f.close()
             
@@ -151,7 +151,7 @@ class Spatial_CNN():
                 'state_dict': self.model.state_dict(),
                 'best_prec1': self.best_prec1,
                 'optimizer' : self.optimizer.state_dict()
-            },is_best,'record/spatial/checkpoint.pth.tar','record/spatial/model_best.pth.tar')
+            },is_best,'record/spatial_untrained/checkpoint.pth.tar','record/spatial_untrained/model_best.pth.tar')
 
         self.validate_1epoch(test=True)
 
@@ -218,7 +218,7 @@ class Spatial_CNN():
                 'lr': [self.optimizer.param_groups[0]['lr']]
                 }
         print_dict_to_table(info, drop=['Epoch'], transpose=False)
-        record_info(info, 'record/spatial/rgb_train.csv','train')
+        record_info(info, 'record/spatial_untrained/rgb_train.csv','train')
 
     def validate_1epoch(self, test = False):
         if test:
@@ -325,23 +325,23 @@ class Spatial_CNN():
             self.dic_super_class_label_preds['accuracy'] = [super_acc1, super_acc2, super_acc3]
             self.dic_sub_class_label_preds['accuracy'] = [sub_acc1, sub_acc2, sub_acc3]
 
-            pickleme('record/spatial/'+f+'latest_spatial_dic_video_level_preds.pickle', self.dic_video_level_preds)
-            pickleme('record/spatial/'+f+'latest_spatial_dic_super_class_label_preds.pickle', self.dic_super_class_label_preds)
-            pickleme('record/spatial/'+f+'latest_spatial_dic_sub_class_label_preds.pickle', self.dic_sub_class_label_preds)
+            pickleme('record/spatial_untrained/'+f+'latest_spatial_dic_video_level_preds.pickle', self.dic_video_level_preds)
+            pickleme('record/spatial_untrained/'+f+'latest_spatial_dic_super_class_label_preds.pickle', self.dic_super_class_label_preds)
+            pickleme('record/spatial_untrained/'+f+'latest_spatial_dic_sub_class_label_preds.pickle', self.dic_sub_class_label_preds)
 
-            record_info(info, 'record/spatial/'+f+'new_opf_test.csv', 'test')
+            record_info(info, 'record/spatial_untrained/'+f+'new_opf_test.csv', 'test')
 
             from pandas_ml import ConfusionMatrix
 
             confusion_matrix_super = ConfusionMatrix(true_super, pred_super)
             df_conf_super = confusion_matrix_super.to_dataframe()
-            df_conf_super.to_csv('./record/motion/super_confusion.csv', index=None)
+            df_conf_super.to_csv('./record/spatial_untrained/super_confusion.csv', index=None)
 
             super_mAP, super_mAR = get_mAP_and_mAR(df_conf_super)
 
             confusion_matrix_sub = ConfusionMatrix(true_sub, pred_sub)
             df_conf_sub = confusion_matrix_sub.to_dataframe()
-            df_conf_sub.to_csv('./record/motion/sub_confusion.csv', index=None)
+            df_conf_sub.to_csv('./record/spatial_untrained/sub_confusion.csv', index=None)
 
             sub_mAP, sub_mAR = get_mAP_and_mAR(df_conf_sub)
 

@@ -335,13 +335,13 @@ class Spatial_CNN():
 
             confusion_matrix_super = ConfusionMatrix(true_super, pred_super)
             df_conf_super = confusion_matrix_super.to_dataframe()
-            df_conf_super.to_csv('./record/motion/super_confusion.csv', index=None)
+            df_conf_super.to_csv('./record/spatial/super_confusion.csv', index=None)
 
             super_mAP, super_mAR = get_mAP_and_mAR(df_conf_super)
 
             confusion_matrix_sub = ConfusionMatrix(true_sub, pred_sub)
             df_conf_sub = confusion_matrix_sub.to_dataframe()
-            df_conf_sub.to_csv('./record/motion/sub_confusion.csv', index=None)
+            df_conf_sub.to_csv('./record/spatial/sub_confusion.csv', index=None)
 
             sub_mAP, sub_mAR = get_mAP_and_mAR(df_conf_sub)
 
